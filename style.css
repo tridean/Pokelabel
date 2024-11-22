@@ -42,6 +42,13 @@ button:hover {
   background-color: #0056b3;
 }
 
+/* Ensure the input container is positioned relatively */
+#input-container {
+  position: relative;
+  display: inline-block; /* Ensures input and autocomplete align properly */
+  width: 100%; /* Match parent width */
+}
+
 #label-container {
   margin-top: 20px;
 }
@@ -53,4 +60,36 @@ canvas {
   background-color: #222;
   border-radius: 8px; /* Rounded corners for the label */
   font-family: "Pokemon Emerald", Arial, sans-serif; /* Apply the font to canvas text */
+}
+
+/* Style for the autocomplete list */
+#autocomplete-list {
+  position: absolute;
+  top: calc(100% + 5px); /* Position it slightly below the input field */
+  left: 0;
+  width: 100%; /* Match the width of the input field */
+  max-height: 200px; /* Limit the height */
+  overflow-y: auto; /* Add scrolling if needed */
+  background-color: #333; /* Match the dark theme */
+  border: 1px solid #555; /* Slight border for separation */
+  z-index: 1000; /* Ensure it appears above other elements */
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Add subtle shadow */
+}
+
+/* Style for individual autocomplete items */
+.autocomplete-item {
+  padding: 8px 12px;
+  color: #fff; /* White text */
+  cursor: pointer;
+}
+
+.autocomplete-item:hover {
+  background-color: #444; /* Slightly lighter background on hover */
+}
+
+#autocomplete-list:empty {
+  display: none;
 }

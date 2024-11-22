@@ -1,3 +1,54 @@
+let pokemonList = [];
+
+// Fetch all Pokémon names on page load
+async function fetchPokemonList() {
+  try {
+    const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1008');
+    const data = await response.json();
+    pokemonList = data.results.map((pokemon) => pokemon.name);
+  } catch (error) {
+    console.error('Error fetching Pokémon list:', error);
+  }
+}
+
+// Call this function to populate the list on page load
+fetchPokemonList();
+const input = document.getElementById('pokemon-input');
+const autocompleteList = document.getElementById('autocomplete-list');
+
+// Listen for input changes to populate suggestions
+input.addEventListener('input', () => {
+  const query = input.value.toLowerCase().trim();
+  autocompleteList.innerHTML = ''; // Clear any existing suggestions
+
+  if (!query) return; // Exit if input is empty
+
+  // Filter Pokémon names based on input and show the first 10 matches
+  const matches = pokemonList.filter((name) => name.startsWith(query)).slice(0, 10);
+
+  matches.forEach((name) => {
+    const listItem = document.createElement('li');
+    listItem.textContent = capitalizeFirstLetter(name);
+    listItem.classList.add('autocomplete-item');
+
+    // Fill input when suggestion is clicked
+    listItem.addEventListener('click', () => {
+      input.value = capitalizeFirstLetter(name);
+      autocompleteList.innerHTML = ''; // Clear suggestions
+    });
+
+    autocompleteList.appendChild(listItem);
+  });
+});
+
+// Helper function to capitalize names
+function capitalizeFirstLetter(str) {
+  return str
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 document.getElementById('generate-button').addEventListener('click', async () => {
   const input = document.getElementById('pokemon-input').value.trim().toLowerCase();
   const container = document.getElementById('label-container');
@@ -13,12 +64,15 @@ document.getElementById('generate-button').addEventListener('click', async () =>
     const font = new FontFace('Pokemon Emerald', 'url(./assets/pokemon-emerald.ttf)');
     await font.load();
     document.fonts.add(font);
-    
+
     // Wait for fonts to load
     await document.fonts.ready;
 
     // Fetch Pokémon data
-    const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${input}`);
+    // Normalize input for special cases like "Mr. Mime" and "Type: Null"
+    const formattedName = input.toLowerCase().replace(/[\s:]/g, '-');
+    const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${formattedName}`);
+
     if (!response.ok) throw new Error('Pokémon not found');
     const data = await response.json();
 
@@ -28,7 +82,9 @@ document.getElementById('generate-button').addEventListener('click', async () =>
     const pokedexEntry = speciesData.flavor_text_entries.find(
       (entry) => entry.language.name === 'en'
     )?.flavor_text.replace(/[\n\f]/g, ' ') || 'No Pokédex entry available.';
-    const habitat = speciesData.habitat ? speciesData.habitat.name : 'Unknown';
+    // Fetch Pokémon catch rate
+    const catchRate = speciesData.capture_rate || 'Unknown';
+
     const classification = speciesData.genera.find(
       (genus) => genus.language.name === 'en'
     )?.genus || 'Unknown Pokémon';
@@ -46,23 +102,86 @@ document.getElementById('generate-button').addEventListener('click', async () =>
     frontCtx.fillStyle = getTypeGradient(frontCtx, types);
     frontCtx.fillRect(0, 0, frontLabel.width, frontLabel.height);
 
+    // Add a 3mm black border (approximately 9px)
+    frontCtx.lineWidth = 9; // Border thickness
+    frontCtx.strokeStyle = '#000'; // Black border color
+    frontCtx.strokeRect(4.5, 4.5, frontLabel.width - 9, frontLabel.height - 9);
+
     // Calculate text color for front label
     const textColor = getContrastingTextColor(
       types.length === 1 ? getTypeColor(types[0]) : '#FFFFFF'
     );
 
-    // Add Pokémon name
-    frontCtx.font = 'bold 48px "Pokemon Emerald"';
-    frontCtx.fillStyle = textColor;
-    frontCtx.fillText(data.name.toUpperCase(), 20, 50);
+// Add a background to the Pokémon name
+// Calculate a contrasting background color for the Pokémon name
+let nameBackgroundColor;
+if (types.length === 1) {
+  // Single type: lighten or darken the type color
+  const baseColor = getTypeColor(types[0]);
+  nameBackgroundColor = adjustColorBrightness(baseColor, -20); // Darken by 20%
+} else {
+  // Dual types: calculate an average color
+  const color1 = getTypeColor(types[0]);
+  const color2 = getTypeColor(types[1]);
+
+  // Convert HEX to RGB
+  const rgb1 = hexToRgb(color1);
+  const rgb2 = hexToRgb(color2);
+
+  // Average the RGB values
+  const avgR = Math.floor((rgb1.r + rgb2.r) / 2);
+  const avgG = Math.floor((rgb1.g + rgb2.g) / 2);
+  const avgB = Math.floor((rgb1.b + rgb2.b) / 2);
+
+  // Convert RGB back to HEX
+  nameBackgroundColor = rgbToHex(avgR, avgG, avgB);
+}
+
+frontCtx.fillStyle = nameBackgroundColor;
+
+// Measure the name text width dynamically
+frontCtx.font = 'bold 48px "Pokemon Emerald"';
+const textWidth = frontCtx.measureText(data.name.toUpperCase()).width;
+
+// Dynamically adjust the background size
+const nameBoxX = 20; // X position
+const nameBoxY = 20; // Y position
+const nameBoxWidth = textWidth + 20; // Add padding
+const nameBoxHeight = 60; // Fixed height
+const borderRadius = 10;
+
+// Draw the rounded rectangle
+frontCtx.beginPath();
+frontCtx.moveTo(nameBoxX + borderRadius, nameBoxY);
+frontCtx.lineTo(nameBoxX + nameBoxWidth - borderRadius, nameBoxY);
+frontCtx.quadraticCurveTo(nameBoxX + nameBoxWidth, nameBoxY, nameBoxX + nameBoxWidth, nameBoxY + borderRadius);
+frontCtx.lineTo(nameBoxX + nameBoxWidth, nameBoxY + nameBoxHeight - borderRadius);
+frontCtx.quadraticCurveTo(nameBoxX + nameBoxWidth, nameBoxY + nameBoxHeight, nameBoxX + nameBoxWidth - borderRadius, nameBoxY + nameBoxHeight);
+frontCtx.lineTo(nameBoxX + borderRadius, nameBoxY + nameBoxHeight);
+frontCtx.quadraticCurveTo(nameBoxX, nameBoxY + nameBoxHeight, nameBoxX, nameBoxY + nameBoxHeight - borderRadius);
+frontCtx.lineTo(nameBoxX, nameBoxY + borderRadius);
+frontCtx.quadraticCurveTo(nameBoxX, nameBoxY, nameBoxX + borderRadius, nameBoxY);
+frontCtx.closePath();
+frontCtx.fill();
+
+// Add a thin black border
+frontCtx.lineWidth = 2; // Thin border
+frontCtx.strokeStyle = '#000'; // Black color
+frontCtx.stroke();
+
+// Add Pokémon name text on top of the background
+frontCtx.fillStyle = getContrastingTextColor(nameBackgroundColor); // Ensure text is readable
+frontCtx.fillText(data.name.toUpperCase(), nameBoxX + 10, nameBoxY + 45); // Position text with padding
+
+
 
     // Add Pokémon number
     frontCtx.font = '36px "Pokemon Emerald"';
-    frontCtx.fillText(`Pokédex #: ${data.id}`, 20, 100);
+    frontCtx.fillText(`Pokédex #: ${data.id}`, 30, 115);
 
     // Add type badges using images
-    let badgeX = 20; // Starting x-position for type badges
-    const badgeY = 120;
+    let badgeX = 26; // Starting x-position for type badges
+    const badgeY = 130;
     const badgePromises = types.map((type) => {
       return new Promise((resolve) => {
         const badgeImage = new Image();
@@ -75,21 +194,43 @@ document.getElementById('generate-button').addEventListener('click', async () =>
       });
     });
 
-    // Add Pokémon sprite prominently
+    // Add Pokémon sprite
     const spritePromise = new Promise((resolve) => {
       const sprite = new Image();
       sprite.src = data.sprites.front_default;
       sprite.onload = () => {
-        frontCtx.drawImage(sprite, 580, 20, 220, 220); // Larger sprite
+        const spriteWidth = sprite.naturalWidth;
+        const spriteHeight = sprite.naturalHeight;
+        const scaleFactor = 220 / spriteWidth; // Scale width to 220px
 
-        // Add height and weight
-        frontCtx.font = '28px "Pokemon Emerald"';
-        frontCtx.fillStyle = textColor;
-        frontCtx.fillText(`Height: ${data.height / 10} m`, 20, 200);
-        frontCtx.fillText(`Weight: ${data.weight / 10} kg`, 20, 230);
+        // Maintain aspect ratio by scaling height proportionally
+        const scaledWidth = spriteWidth * scaleFactor;
+        const scaledHeight = spriteHeight * scaleFactor;
+
+      // Add shadow to the sprite
+frontCtx.shadowColor = 'rgba(0, 0, 0, 0.5)'; // Semi-transparent black shadow
+frontCtx.shadowBlur = 15; // Amount of blur
+frontCtx.shadowOffsetX = 5; // Horizontal offset
+frontCtx.shadowOffsetY = 5; // Vertical offset
+
+// Draw the Pokémon sprite
+frontCtx.drawImage(sprite, 560, 20, scaledWidth, scaledHeight);
+
+// Reset shadow settings to avoid affecting other elements
+frontCtx.shadowColor = 'transparent';
+frontCtx.shadowBlur = 0;
+frontCtx.shadowOffsetX = 0;
+frontCtx.shadowOffsetY = 0;
+
         resolve();
       };
     });
+
+    // Add height and weight
+    frontCtx.font = '28px "Pokemon Emerald"';
+    frontCtx.fillStyle = textColor;
+    frontCtx.fillText(`Height: ${data.height / 10} m`, 30, 186);
+    frontCtx.fillText(`Weight: ${data.weight / 10} kg`, 30, 215);
 
     // Wait for type badges and sprite to load
     await Promise.all([...badgePromises, spritePromise]);
@@ -107,6 +248,11 @@ document.getElementById('generate-button').addEventListener('click', async () =>
     backCtx.fillStyle = getTypeGradient(backCtx, types);
     backCtx.fillRect(0, 0, backLabel.width, backLabel.height);
 
+    // Add a 3mm black border (approximately 9px)
+    backCtx.lineWidth = 9; // Border thickness
+    backCtx.strokeStyle = '#000'; // Black border color
+    backCtx.strokeRect(4.5, 4.5, backLabel.width - 9, backLabel.height - 9);
+
     // Calculate text color for back label
     const backTextColor = getContrastingTextColor(
       types.length === 1 ? getTypeColor(types[0]) : '#FFFFFF'
@@ -115,25 +261,32 @@ document.getElementById('generate-button').addEventListener('click', async () =>
     // Add Pokémon classification
     backCtx.font = 'italic 28px "Pokemon Emerald"';
     backCtx.fillStyle = backTextColor;
-    backCtx.fillText(classification, 20, 40);
+    backCtx.fillText(classification, 30, 40);
 
     // Add Pokédex entry
     backCtx.font = 'italic 24px "Pokemon Emerald"';
-    const wrappedText = wrapText(backCtx, pokedexEntry, 20, 80, 680, 30);
+    const wrappedText = wrapText(backCtx, pokedexEntry, 30, 80, backLabel.width - 140, 30);
     wrappedText.forEach((line, index) => {
-      backCtx.fillText(line, 20, 80 + index * 30);
+      backCtx.fillText(line, 30, 80 + index * 30);
     });
 
-    // Add habitat
-    const habitatY = 80 + wrappedText.length * 30 + 20;
-    backCtx.font = '28px "Pokemon Emerald"';
-    backCtx.fillStyle = backTextColor;
-    backCtx.fillText(`Habitat: ${habitat.toUpperCase()}`, 20, habitatY);
+    // Position catch rate closer to the bottom
+const catchRateY = backLabel.height - 40; // Final position
+backCtx.font = '28px "Pokemon Emerald"';
+backCtx.fillStyle = backTextColor;
+const catchRateX = 30; // Align to the left
+backCtx.fillText(`Catch Rate: ${catchRate}`, catchRateX, catchRateY);
+
+
+
 
     // Add QR code for cry
     const qrSize = 80;
-    const qrX = backLabel.width - qrSize - 20;
-    const qrY = habitatY - qrSize + 10; // Align with habitat
+    // Adjust QR code position to accommodate the back sprite
+    const qrX = 20; // Move QR code to the bottom-left
+    const qrY = backLabel.height - qrSize - 20; // Align with the bottom edge
+
+
     const cryUrl = `https://play.pokemonshowdown.com/audio/cries/${data.name.toLowerCase()}.mp3`;
     const qr = new QRious({
       value: cryUrl,
@@ -141,16 +294,57 @@ document.getElementById('generate-button').addEventListener('click', async () =>
     });
     const qrImg = new Image();
     qrImg.src = qr.toDataURL();
-    qrImg.onload = () => {
+    qrImg.onload = async () => {
       backCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-
-      // Append the back label
+      await backSpritePromise; // Ensure the back sprite loads before appending
       container.appendChild(backLabel);
     };
+    
+
+    // Add back sprite to the back label
+    const backSpritePromise = new Promise((resolve) => {
+    const backSprite = new Image();
+    backSprite.src = data.sprites.back_default;
+    backSprite.onload = () => {
+    const spriteWidth = backSprite.naturalWidth;
+    const spriteHeight = backSprite.naturalHeight;
+    const scaleFactor = 120 / spriteWidth; // Scale width to 120px
+
+    // Maintain aspect ratio by scaling height proportionally
+    const scaledWidth = spriteWidth * scaleFactor;
+    const scaledHeight = spriteHeight * scaleFactor;
+
+    // Add shadow to the back sprite
+    backCtx.shadowColor = 'rgba(0, 0, 0, 0.5)'; // Semi-transparent black shadow
+    backCtx.shadowBlur = 15; // Amount of blur
+    backCtx.shadowOffsetX = 5; // Horizontal offset
+    backCtx.shadowOffsetY = 5; // Vertical offset
+
+    // Draw the back sprite
+    const spriteScaleFactor = 220 / backSprite.naturalWidth; // Same size as front sprite
+    const spriteScaledWidth = backSprite.naturalWidth * spriteScaleFactor;
+    const spriteScaledHeight = backSprite.naturalHeight * spriteScaleFactor;
+
+    backCtx.drawImage(backSprite, backLabel.width - spriteScaledWidth - 20, 20, spriteScaledWidth, spriteScaledHeight);
+
+
+
+
+    // Reset shadow settings
+    backCtx.shadowColor = 'transparent';
+    backCtx.shadowBlur = 0;
+    backCtx.shadowOffsetX = 0;
+    backCtx.shadowOffsetY = 0;
+
+    resolve();
+  };
+});
+
   } catch (error) {
     alert(error.message);
   }
 });
+
 
 // Helper function to get type colors
 function getTypeColor(type) {
@@ -217,3 +411,30 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   lines.push(line.trim());
   return lines;
 }
+
+// Convert HEX color to RGB
+function hexToRgb(hex) {
+  const bigint = parseInt(hex.slice(1), 16);
+  return {
+    r: (bigint >> 16) & 255,
+    g: (bigint >> 8) & 255,
+    b: bigint & 255,
+  };
+}
+
+// Convert RGB color to HEX
+function rgbToHex(r, g, b) {
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+}
+
+
+// Adjust brightness of a HEX color
+function adjustColorBrightness(hex, percent) {
+  const rgb = hexToRgb(hex);
+  const adjust = (value) => Math.min(255, Math.max(0, value + Math.round((percent / 100) * 255)));
+  const r = adjust(rgb.r);
+  const g = adjust(rgb.g);
+  const b = adjust(rgb.b);
+  return rgbToHex(r, g, b);
+}
+

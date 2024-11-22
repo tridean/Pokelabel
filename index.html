@@ -1,15 +1,20 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pokémon Card Label Generator</title>
+  <title>PokémLabel</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="app">
-    <h1>Pokémon Card Label Generator</h1>
-    <input type="text" id="pokemon-input" placeholder="Enter Pokémon Name or ID">
+    <h1>PokéLabel</h1>
+    <!-- Add a container around the input field and autocomplete list -->
+    <div id="input-container">
+      <input type="text" id="pokemon-input" placeholder="Enter Pokémon name" autocomplete="off">
+      <ul id="autocomplete-list"></ul>
+    </div>
     <button id="generate-button">Generate Label</button>
     <div id="label-container"></div>
   </div>
