@@ -173,7 +173,24 @@ frontCtx.stroke();
 frontCtx.fillStyle = getContrastingTextColor(nameBackgroundColor); // Ensure text is readable
 frontCtx.fillText(data.name.toUpperCase(), nameBoxX + 10, nameBoxY + 45); // Position text with padding
 
+// Calculate the position for the QR code
+const qrSize = 50;
+const qrX = frontLabel.width - qrSize - 20; // Position to the right of the name
+const qrY = 20; // Position near the top
 
+// Generate the QR code
+const cryUrl = `https://play.pokemonshowdown.com/audio/cries/${data.name.toLowerCase()}.mp3`;
+const qr = new QRious({
+  value: cryUrl,
+  size: qrSize,
+});
+const qrImg = new Image();
+qrImg.src = qr.toDataURL();
+
+// Draw the QR code on the front label
+qrImg.onload = () => {
+  frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+};
 
     // Add Pokémon number
     frontCtx.font = '36px "Pokemon Emerald"';
@@ -276,29 +293,6 @@ backCtx.font = '28px "Pokemon Emerald"';
 backCtx.fillStyle = backTextColor;
 const catchRateX = 30; // Align to the left
 backCtx.fillText(`Catch Rate: ${catchRate}`, catchRateX, catchRateY);
-
-
-
-
-    // Add QR code for cry
-    const qrSize = 80;
-    // Adjust QR code position to accommodate the back sprite
-    const qrX = 20; // Move QR code to the bottom-left
-    const qrY = backLabel.height - qrSize - 20; // Align with the bottom edge
-
-
-    const cryUrl = `https://play.pokemonshowdown.com/audio/cries/${data.name.toLowerCase()}.mp3`;
-    const qr = new QRious({
-      value: cryUrl,
-      size: qrSize,
-    });
-    const qrImg = new Image();
-    qrImg.src = qr.toDataURL();
-    qrImg.onload = async () => {
-      backCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-      await backSpritePromise; // Ensure the back sprite loads before appending
-      container.appendChild(backLabel);
-    };
     
 
     // Add back sprite to the back label
@@ -325,7 +319,7 @@ backCtx.fillText(`Catch Rate: ${catchRate}`, catchRateX, catchRateY);
     const spriteScaledWidth = backSprite.naturalWidth * spriteScaleFactor;
     const spriteScaledHeight = backSprite.naturalHeight * spriteScaleFactor;
 
-    backCtx.drawImage(backSprite, backLabel.width - spriteScaledWidth - 20, 20, spriteScaledWidth, spriteScaledHeight);
+    backCtx.drawImage(backSprite, backLabel.width - spriteScaledWidth - 35, 20, spriteScaledWidth, spriteScaledHeight);
 
 
 
@@ -338,6 +332,10 @@ backCtx.fillText(`Catch Rate: ${catchRate}`, catchRateX, catchRateY);
 
     resolve();
   };
+});
+
+backSpritePromise.then(() => {
+  container.appendChild(backLabel);
 });
 
   } catch (error) {
