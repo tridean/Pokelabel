@@ -9,6 +9,11 @@ document.getElementById('generate-button').addEventListener('click', async () =>
   }
 
   try {
+    // Load the custom font explicitly
+    const font = new FontFace('Pokemon Emerald', 'url(./assets/pokemon-emerald.ttf)');
+    await font.load();
+    document.fonts.add(font);
+    
     // Wait for fonts to load
     await document.fonts.ready;
 
