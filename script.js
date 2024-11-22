@@ -194,7 +194,7 @@ qrImg.onload = () => {
 
     // Add Pokémon number
     frontCtx.font = '36px "Pokemon Emerald"';
-    frontCtx.fillText(`Pokédex #: ${data.id}`, 30, 115);
+    frontCtx.fillText(`Pokédex #${data.id}`, 30, 115);
 
     // Add type badges using images
     let badgeX = 26; // Starting x-position for type badges
@@ -300,13 +300,6 @@ backCtx.fillText(`Catch Rate: ${catchRate}`, catchRateX, catchRateY);
     const backSprite = new Image();
     backSprite.src = data.sprites.back_default;
     backSprite.onload = () => {
-    const spriteWidth = backSprite.naturalWidth;
-    const spriteHeight = backSprite.naturalHeight;
-    const scaleFactor = 120 / spriteWidth; // Scale width to 120px
-
-    // Maintain aspect ratio by scaling height proportionally
-    const scaledWidth = spriteWidth * scaleFactor;
-    const scaledHeight = spriteHeight * scaleFactor;
 
     // Add shadow to the back sprite
     backCtx.shadowColor = 'rgba(0, 0, 0, 0.5)'; // Semi-transparent black shadow
